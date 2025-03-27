@@ -2,6 +2,7 @@ package com.inoichi.controller;
 
 import com.inoichi.dto.UserQueryDTO;
 import com.inoichi.dto.UserQueryRequestDTO;
+import com.inoichi.dto.UserQueryResponseDTO;
 import com.inoichi.service.UserQueryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,17 +20,24 @@ public class UserQueryController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<List<UserQueryDTO>> getUserQueries(@PathVariable UUID userId) {
-        List<UserQueryDTO> queries = userQueryService.getUserQueriesByUserId(userId);
+    public ResponseEntity<List<UserQueryResponseDTO>> getUserQueries(@PathVariable UUID userId) {
+        System.out.println("📌 Fetching all queries for userId: " + userId);
+
+        List<UserQueryResponseDTO> queries = userQueryService.getAllQueriesForUser(userId);
         return ResponseEntity.ok(queries);
     }
-    @PutMapping("/{userId}")
-    public ResponseEntity<UserQueryDTO> createUserQuery(
-            @PathVariable UUID userId,
-            @RequestBody UserQueryRequestDTO request) {
 
-        request.setUserId(userId);  // Set userId from URL
-        UserQueryDTO savedQuery = userQueryService.saveUserQuery(request);
+    @PostMapping("/{userId}")
+    public ResponseEntity<UserQueryResponseDTO> addUserQuery(
+            @PathVariable UUID userId,
+            @RequestBody UserQueryRequestDTO requestDTO) {
+
+        System.out.println("📌 Received POST request for userId: " + userId);
+        System.out.println("📌 Query: " + requestDTO.getQuery());
+        System.out.println("📌 Symptoms: " + requestDTO.getExtractedSymptoms());
+
+        UserQueryResponseDTO savedQuery = userQueryService.saveUserQuery(userId, requestDTO);
         return ResponseEntity.ok(savedQuery);
     }
+
 }

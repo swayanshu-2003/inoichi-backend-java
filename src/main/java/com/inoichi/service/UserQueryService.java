@@ -4,11 +4,13 @@ import com.inoichi.db.model.User;
 import com.inoichi.dto.UserQueryDTO;
 import com.inoichi.db.model.UserQuery;
 import com.inoichi.dto.UserQueryRequestDTO;
+import com.inoichi.dto.UserQueryResponseDTO;
 import com.inoichi.repository.UserQueryRepository;
 import com.inoichi.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -30,16 +32,24 @@ public class UserQueryService {
                 .map(UserQueryDTO::new)
                 .collect(Collectors.toList());
     }
-    public UserQueryDTO saveUserQuery(UserQueryRequestDTO request) {
-        User user = userRepository.findById(request.getUserId())
+    public UserQueryResponseDTO saveUserQuery(UUID userId, UserQueryRequestDTO requestDTO) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        UserQuery userQuery = new UserQuery();
-        userQuery.setUser(user);
-        userQuery.setQuery(request.getQuery());
-        userQuery.setExtractedSymptoms(request.getExtractedSymptoms());
+        UserQuery query = new UserQuery();
+        query.setUser(user);
+        query.setQuery(requestDTO.getQuery());
+        query.setExtractedSymptoms(requestDTO.getExtractedSymptoms());
+        query.setCreatedAt(LocalDateTime.now());
 
-        userQueryRepository.save(userQuery);
-        return new UserQueryDTO(userQuery);
+        userQueryRepository.save(query);
+
+        return new UserQueryResponseDTO(query);
     }
+    public List<UserQueryResponseDTO> getAllQueriesForUser(UUID userId) {
+        List<UserQuery> queries = userQueryRepository.findByUserId(userId);
+        return queries.stream().map(UserQueryResponseDTO::new).collect(Collectors.toList());
+    }
+
+
 }
