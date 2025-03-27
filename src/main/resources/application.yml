@@ -1,0 +1,42 @@
+spring:
+  flyway:
+    locations: classpath:db/migration
+    schemas: app
+    enabled: true
+  application:
+    name: inoichi
+  datasource:
+    url: jdbc:postgresql://inoichi-db-tuincat-d515.h.aivencloud.com:28642/defaultdb?ssl=require
+    username: avnadmin
+    password: AVNS_qKcMoh607mJfWww6n3U
+  springdoc:
+    api-docs:
+      path: /api-docs
+    swagger-ui:
+      operations-sorter: method
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: app
+        format_sql: true
+server:
+  shutdown: graceful
+  port: 8345
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+    level: 6
+jwt:
+  secret: NTM2NzU2NkI1OTcwMzM3MzM2NzYzOTc5MkY0MjNGNDUyODQ4MkI0RDYyNTE2NTU0Njg1NzZENUE3MTM0NzQzNw==
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
+      web:
+        DEBUG
