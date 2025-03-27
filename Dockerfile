@@ -17,11 +17,10 @@ FROM openjdk:17-jdk-slim
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the JAR file from the build stage to the runtime stage
-COPY --from=build /app/target/Inoichi-Project-0.0.1-SNAPSHOT.jar /app/Inoichi Project-0.0.1-SNAPSHOT.jar
+# Correct the filename (use underscore or remove space)
+COPY --from=build /app/target/Inoichi-Project-0.0.1-SNAPSHOT.jar /app/inoichi-project.jar
 
 # Expose the port your app runs on (default 8080 for Spring Boot)
 EXPOSE 8345
 
-# Run the JAR file
-ENTRYPOINT ["java", "-jar", "/app/Inoichi Project-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "/app/inoichi-project.jar"]

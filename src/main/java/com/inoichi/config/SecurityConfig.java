@@ -39,8 +39,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/webjars/**",
-                                "/api-docs/**"
+                                "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/auth/login", "/auth/signup/**").permitAll()
                         .anyRequest().authenticated()
@@ -49,6 +48,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
 
     @Bean
