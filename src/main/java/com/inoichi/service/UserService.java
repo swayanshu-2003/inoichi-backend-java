@@ -1,14 +1,18 @@
 package com.inoichi.service;
 
+import com.inoichi.db.model.House;
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserTeam;
+import com.inoichi.repository.HouseRepository;
 import com.inoichi.repository.TeamRepository;
 import com.inoichi.repository.UserRepository;
 import com.inoichi.repository.UserTeamRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -18,7 +22,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final UserTeamRepository userTeamRepository;
-
+    @Autowired
+    private HouseRepository houseRepository;
     public UserService(
             UserRepository userRepository,
             TeamRepository teamRepository,
@@ -64,7 +69,8 @@ public class UserService {
         userTeam.setTeam(team);
         userTeamRepository.save(userTeam);
     }
-    public List<Team> getTeamsForHouse(UUID houseId) {
-        return teamRepository.findByHouseId(houseId);
+    public List<House> getHousesByIds(Set<UUID> houseIds) {
+        return houseRepository.findAllById(houseIds);
     }
+
 }

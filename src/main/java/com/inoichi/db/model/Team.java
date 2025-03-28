@@ -1,5 +1,6 @@
 package com.inoichi.db.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,5 +22,6 @@ public class Team {
 
     @ManyToOne
     @JoinColumn(name = "house_id")
+    @JsonBackReference  // Prevents infinite recursion
     private House house;
 }
