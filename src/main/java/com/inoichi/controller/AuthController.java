@@ -62,7 +62,7 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
 
-        // Ensure this method returns List<TeamWithHouseInfo>
+        // Ensure this method returns List<TeamWithHouseInfo> with house names
         List<TeamWithHouseInfo> teams = userService.getTeamsForUser(user.getId());
 
         return ResponseEntity.ok(new UserResponse(
@@ -74,5 +74,6 @@ public class AuthController {
                 null  // Token is not needed in this method, as it's not a login operation
         ));
     }
+
 
 }

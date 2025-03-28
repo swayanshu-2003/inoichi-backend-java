@@ -12,6 +12,6 @@ import java.util.UUID;
 public class TeamWithHouseInfo {
     private UUID id;
     private String name;
-    private UUID houseId;
+    private String houseName;
 
 }

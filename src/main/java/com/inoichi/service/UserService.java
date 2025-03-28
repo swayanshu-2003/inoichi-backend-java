@@ -48,11 +48,12 @@ public class UserService {
         return userTeams.stream()
                 .map(userTeam -> {
                     Team team = userTeam.getTeam();  // Get the associated team
-                    UUID houseId = team.getHouse().getId();  // Get the associated houseId
-                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                    String houseName = team.getHouse().getName();  // Get the associated house name
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseName);  // Return the TeamWithHouseInfo with house name
                 })
                 .collect(Collectors.toList());
     }
+
 
     /**
      * Assigns a user to a team while ensuring they only join one team per house.

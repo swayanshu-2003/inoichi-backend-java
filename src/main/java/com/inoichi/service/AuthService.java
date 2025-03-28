@@ -55,7 +55,7 @@ public class AuthService {
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
 
-        // Create user
+        // Create and save the user
         User newUser = new User();
         newUser.setName(request.getName());
         newUser.setEmail(request.getEmail());
@@ -64,21 +64,21 @@ public class AuthService {
 
         userRepository.save(newUser);
 
-        // Assign user to multiple teams and fetch associated houseId for each team
+        // Create the user-team relation and fetch house names
         List<TeamWithHouseInfo> teams = request.getTeamIds().stream()
                 .map(teamId -> {
                     Team team = teamRepository.findById(teamId)
                             .orElseThrow(() -> new RuntimeException("Team not found: " + teamId));
 
-                    // Retrieve houseId from the team (since each team has a house)
-                    UUID houseId = team.getHouse().getId();
+                    // Retrieve the house name from the team (since each team has a house)
+                    String houseName = team.getHouse().getName();  // Assuming House entity has `getName()`
 
-                    // Create a TeamWithHouseInfo object to store team details along with houseId
-                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                    // Return the TeamWithHouseInfo object with house name
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseName);
                 })
                 .collect(Collectors.toList());
 
-        // Create UserTeam relations
+        // Save the user-team relations
         for (TeamWithHouseInfo teamInfo : teams) {
             Team team = teamRepository.findById(teamInfo.getId())
                     .orElseThrow(() -> new RuntimeException("Team not found: " + teamInfo.getId()));
@@ -89,10 +89,9 @@ public class AuthService {
             userTeamRepository.save(userTeam);
         }
 
-        // Generate JWT Token
+        // Generate JWT token
         String token = jwtUtil.generateToken(request.getEmail());
 
-        // Return the correct list of joined teams, including houseId
         return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), newUser.getGeolocation(), teams, token);
     }
 
@@ -120,22 +119,20 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password.");
         }
 
-        // Fetch user details
+        // Fetch user and teams with house names
         User user = getUserByEmail(email);
-
-        // Fetch the teams associated with the user and their house details
         List<TeamWithHouseInfo> teams = userTeamRepository.findByUserId(user.getId()).stream()
                 .map(userTeam -> {
                     Team team = userTeam.getTeam();
-                    UUID houseId = team.getHouse().getId();
-                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                    String houseName = team.getHouse().getName();  // Get house name instead of house ID
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseName);
                 })
                 .collect(Collectors.toList());
 
-        // Generate JWT Token
+        // Generate JWT token
         String token = jwtUtil.generateToken(email);
 
-        // Return the user response with teams and token
+        // Return response with user data and teams
         return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getGeolocation(), teams, token);
     }
 
