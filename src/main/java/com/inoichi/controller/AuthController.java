@@ -57,9 +57,5 @@ public class AuthController {
         return ResponseEntity.ok(new UserResponse(user.getId(), user.getEmail(), user.getName(), teams, null));
     }
 
-    @PostMapping("/select-team")
-    public ResponseEntity<String> selectTeam(@RequestBody TeamSelectionRequest request) {
-        userService.assignTeamToUser(request);
-        return ResponseEntity.ok("Team selection successful!");
-    }
+
 }

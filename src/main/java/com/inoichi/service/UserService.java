@@ -3,7 +3,6 @@ package com.inoichi.service;
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserTeam;
-import com.inoichi.dto.TeamSelectionRequest;
 import com.inoichi.repository.TeamRepository;
 import com.inoichi.repository.UserRepository;
 import com.inoichi.repository.UserTeamRepository;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -30,13 +30,23 @@ public class UserService {
     }
 
     /**
+     * Retrieves all teams associated with a user.
+     */
+    public List<Team> getTeamsForUser(UUID userId) {
+        return userTeamRepository.findByUserId(userId)
+                .stream()
+                .map(UserTeam::getTeam)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Assigns a user to a team while ensuring they only join one team per house.
      */
-    public void assignTeamToUser(TeamSelectionRequest request) {
-        User user = userRepository.findById(request.getUserId())
+    public void assignTeamToUser(UUID userId, UUID teamId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Team team = teamRepository.findById(request.getTeamId())
+        Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new RuntimeException("Team not found"));
 
         // Check if user already has a team in this house
@@ -54,11 +64,7 @@ public class UserService {
         userTeam.setTeam(team);
         userTeamRepository.save(userTeam);
     }
-    public List<Team> getTeamsForUser(UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return user.getTeams(); // This will retrieve teams using UserTeam relationships
+    public List<Team> getTeamsForHouse(UUID houseId) {
+        return teamRepository.findByHouseId(houseId);
     }
-
 }

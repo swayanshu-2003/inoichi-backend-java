@@ -72,6 +72,7 @@ public class AuthService {
     }
 
 
+
     /**
      * Authenticates an existing user and returns a JWT token.
      */
@@ -86,6 +87,7 @@ public class AuthService {
 
         return jwtUtil.generateToken(email);
     }
+
 
     /**
      * Fetches user details by email.
