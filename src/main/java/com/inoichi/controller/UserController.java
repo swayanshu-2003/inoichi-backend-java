@@ -1,12 +1,15 @@
 package com.inoichi.controller;
 
 import com.inoichi.db.model.Team;
+import com.inoichi.db.model.User;
 import com.inoichi.dto.TeamSelectionRequest;
+import com.inoichi.dto.TreeRequestDTO;
 import com.inoichi.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +35,14 @@ public class UserController {
 
         userService.assignTeamToUser(userId, request.getTeamId());
         return ResponseEntity.ok("Team selection successful!");
+    }
+    @PostMapping("/add-tree")
+    public ResponseEntity<String> addTree(@RequestBody TreeRequestDTO treeRequestDTO) {
+        String response = userService.addTree(treeRequestDTO);
+        if (response.equals("User not found")) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 
 }

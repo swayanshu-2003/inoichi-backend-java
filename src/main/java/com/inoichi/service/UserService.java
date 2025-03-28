@@ -1,17 +1,14 @@
 package com.inoichi.service;
 
-import com.inoichi.db.model.House;
-import com.inoichi.db.model.Team;
-import com.inoichi.db.model.User;
-import com.inoichi.db.model.UserTeam;
-import com.inoichi.repository.HouseRepository;
-import com.inoichi.repository.TeamRepository;
-import com.inoichi.repository.UserRepository;
-import com.inoichi.repository.UserTeamRepository;
+import com.inoichi.db.model.*;
+import com.inoichi.dto.PublicTransportRequestDTO;
+import com.inoichi.dto.TreeRequestDTO;
+import com.inoichi.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -24,6 +21,10 @@ public class UserService {
     private final UserTeamRepository userTeamRepository;
     @Autowired
     private HouseRepository houseRepository;
+    @Autowired
+    private TreeRepository treeRepository;
+    @Autowired
+    private PublicTransportRepository transportRepository;
     public UserService(
             UserRepository userRepository,
             TeamRepository teamRepository,
@@ -72,5 +73,33 @@ public class UserService {
     public List<House> getHousesByIds(Set<UUID> houseIds) {
         return houseRepository.findAllById(houseIds);
     }
+    public String addTree(TreeRequestDTO treeRequestDTO) {
+        Optional<User> userOptional = userRepository.findById(treeRequestDTO.getUserId());
+        if (userOptional.isEmpty()) {
+            return "User not found";
+        }
 
+        Tree tree = new Tree();
+        tree.setUser(userOptional.get());
+        tree.setLocation(treeRequestDTO.getLocation());
+        treeRepository.save(tree);
+
+        return "Tree added successfully";
+    }
+    public String addPublicTransport(PublicTransportRequestDTO transportRequestDTO) {
+        Optional<User> userOptional = userRepository.findById(transportRequestDTO.getUserId());
+        if (userOptional.isEmpty()) {
+            return null;
+        }
+
+        PublicTransport transport = new PublicTransport();
+        transport.setUser(userOptional.get());
+        transport.setTravelData(transportRequestDTO.getTravelData());
+        transport = transportRepository.save(transport);
+
+        return "Transport details added successfully";
+    }
 }
+
+
+
