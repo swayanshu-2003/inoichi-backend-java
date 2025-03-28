@@ -6,6 +6,7 @@ import com.inoichi.dto.AuthRequest;
 import com.inoichi.dto.LoginResponse;
 import com.inoichi.dto.TeamSelectionRequest;
 import com.inoichi.dto.UserResponse;
+import com.inoichi.dto.TeamWithHouseInfo;  // Import the TeamWithHouseInfo DTO
 import com.inoichi.service.AuthService;
 import com.inoichi.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -42,18 +42,28 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody AuthRequest request) {
-        String token = authService.authenticateAndGenerateToken(request.getEmail(), request.getPassword());
+    public ResponseEntity<UserResponse> login(@RequestBody AuthRequest request) {
+        // Authenticate and generate token along with user teams info
+        UserResponse userResponse = authService.authenticateAndGenerateToken(request.getEmail(), request.getPassword());
+
+        // Set JWT token in response headers
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + token);
-        return ResponseEntity.ok().headers(headers).body(new LoginResponse("Login successful!", token));
+        headers.set("Authorization", "Bearer " + userResponse.getToken());
+
+        // Return response with user profile, teams, and JWT token
+        return ResponseEntity.ok().headers(headers).body(userResponse);
     }
 
+    /**
+     * Fetches the current user profile, including the list of teams and their associated house IDs.
+     */
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getUserProfile() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
-        List<Team> teams = userService.getTeamsForUser(user.getId());
+
+        // Ensure this method returns List<TeamWithHouseInfo>
+        List<TeamWithHouseInfo> teams = userService.getTeamsForUser(user.getId());
 
         return ResponseEntity.ok(new UserResponse(
                 user.getId(),
@@ -61,10 +71,8 @@ public class AuthController {
                 user.getName(),
                 user.getGeolocation(),  // Include geolocation in response
                 teams,
-                null
+                null  // Token is not needed in this method, as it's not a login operation
         ));
     }
-
-
 
 }

@@ -4,6 +4,7 @@ import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserTeam;
 import com.inoichi.dto.AuthRequest;
+import com.inoichi.dto.TeamWithHouseInfo;
 import com.inoichi.dto.UserResponse;
 import com.inoichi.repository.TeamRepository;
 import com.inoichi.repository.UserRepository;
@@ -17,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,13 +64,25 @@ public class AuthService {
 
         userRepository.save(newUser);
 
-        // Assign user to multiple teams
-        List<Team> teams = request.getTeamIds().stream()
-                .map(teamId -> teamRepository.findById(teamId)
-                        .orElseThrow(() -> new RuntimeException("Team not found: " + teamId)))
+        // Assign user to multiple teams and fetch associated houseId for each team
+        List<TeamWithHouseInfo> teams = request.getTeamIds().stream()
+                .map(teamId -> {
+                    Team team = teamRepository.findById(teamId)
+                            .orElseThrow(() -> new RuntimeException("Team not found: " + teamId));
+
+                    // Retrieve houseId from the team (since each team has a house)
+                    UUID houseId = team.getHouse().getId();
+
+                    // Create a TeamWithHouseInfo object to store team details along with houseId
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                })
                 .collect(Collectors.toList());
 
-        for (Team team : teams) {
+        // Create UserTeam relations
+        for (TeamWithHouseInfo teamInfo : teams) {
+            Team team = teamRepository.findById(teamInfo.getId())
+                    .orElseThrow(() -> new RuntimeException("Team not found: " + teamInfo.getId()));
+
             UserTeam userTeam = new UserTeam();
             userTeam.setUser(newUser);
             userTeam.setTeam(team);
@@ -82,9 +92,11 @@ public class AuthService {
         // Generate JWT Token
         String token = jwtUtil.generateToken(request.getEmail());
 
-        // Return the correct list of joined teams
+        // Return the correct list of joined teams, including houseId
         return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), newUser.getGeolocation(), teams, token);
     }
+
+
 
     public User getUserFromToken(String token) {
 
@@ -99,7 +111,7 @@ public class AuthService {
     /**
      * Authenticates an existing user and returns a JWT token.
      */
-    public String authenticateAndGenerateToken(String email, String password) {
+    public UserResponse authenticateAndGenerateToken(String email, String password) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, password)
@@ -108,7 +120,23 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password.");
         }
 
-        return jwtUtil.generateToken(email);
+        // Fetch user details
+        User user = getUserByEmail(email);
+
+        // Fetch the teams associated with the user and their house details
+        List<TeamWithHouseInfo> teams = userTeamRepository.findByUserId(user.getId()).stream()
+                .map(userTeam -> {
+                    Team team = userTeam.getTeam();
+                    UUID houseId = team.getHouse().getId();
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                })
+                .collect(Collectors.toList());
+
+        // Generate JWT Token
+        String token = jwtUtil.generateToken(email);
+
+        // Return the user response with teams and token
+        return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getGeolocation(), teams, token);
     }
 
 

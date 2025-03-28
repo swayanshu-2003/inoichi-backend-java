@@ -37,3 +37,7 @@ logging:
         security: DEBUG
       web:
         DEBUG
+google:
+  api:
+    key: "AIzaSyCJB_xuGXMvAWzphLncCv5-HvDp6SsOGqU"
+    base_url: "https://generativelanguage.googleapis.com"

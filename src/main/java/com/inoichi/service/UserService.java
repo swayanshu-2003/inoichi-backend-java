@@ -2,6 +2,7 @@ package com.inoichi.service;
 
 import com.inoichi.db.model.*;
 import com.inoichi.dto.PublicTransportRequestDTO;
+import com.inoichi.dto.TeamWithHouseInfo;
 import com.inoichi.dto.TreeRequestDTO;
 import com.inoichi.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ public class UserService {
     private HouseRepository houseRepository;
     @Autowired
     private TreeRepository treeRepository;
+
     @Autowired
     private PublicTransportRepository transportRepository;
     public UserService(
@@ -38,10 +40,17 @@ public class UserService {
     /**
      * Retrieves all teams associated with a user.
      */
-    public List<Team> getTeamsForUser(UUID userId) {
-        return userTeamRepository.findByUserId(userId)
-                .stream()
-                .map(UserTeam::getTeam)
+    public List<TeamWithHouseInfo> getTeamsForUser(UUID userId) {
+        // Fetch the user-team relationships based on userId
+        List<UserTeam> userTeams = userTeamRepository.findByUserId(userId);
+
+        // Map these relationships to a list of TeamWithHouseInfo DTOs
+        return userTeams.stream()
+                .map(userTeam -> {
+                    Team team = userTeam.getTeam();  // Get the associated team
+                    UUID houseId = team.getHouse().getId();  // Get the associated houseId
+                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseId);
+                })
                 .collect(Collectors.toList());
     }
 
