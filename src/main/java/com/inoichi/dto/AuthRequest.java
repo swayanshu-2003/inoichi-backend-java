@@ -1,17 +1,14 @@
 package com.inoichi.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import java.util.List;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class AuthRequest {
+    private String name;
     private String email;
     private String password;
-    private String name;
-    private UUID houseId;
+    private List<UUID> teamIds;  // Allow multiple teams
+    private String geolocation;  // Store latitude & longitude
 }

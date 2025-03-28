@@ -23,9 +23,13 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
     private String name;
+
+    private String geolocation;  // Store latitude and longitude as a string (e.g., "37.7749,-122.4194")
+
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<UserTeam> userTeams; // Link to UserTeam
+    private List<UserTeam> userTeams;
 
     public List<Team> getTeams() {
         return userTeams.stream()
