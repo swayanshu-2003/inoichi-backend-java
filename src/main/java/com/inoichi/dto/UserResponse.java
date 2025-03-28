@@ -15,6 +15,7 @@ public class UserResponse {
     private UUID id;
     private String email;
     private String name;
-    private List<Team> availableTeams;
+    private String geolocation;  // Include geolocation
+    private List<Team> teams;
     private String token;
 }

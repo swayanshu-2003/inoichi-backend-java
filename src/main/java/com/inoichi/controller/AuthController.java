@@ -54,8 +54,17 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
         List<Team> teams = userService.getTeamsForUser(user.getId());
-        return ResponseEntity.ok(new UserResponse(user.getId(), user.getEmail(), user.getName(), teams, null));
+
+        return ResponseEntity.ok(new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getGeolocation(),  // Include geolocation in response
+                teams,
+                null
+        ));
     }
+
 
 
 }

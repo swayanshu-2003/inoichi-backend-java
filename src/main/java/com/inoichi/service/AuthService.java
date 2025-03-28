@@ -83,11 +83,13 @@ public class AuthService {
         String token = jwtUtil.generateToken(request.getEmail());
 
         // Return the correct list of joined teams
-        return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), teams, token);
+        return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), newUser.getGeolocation(), teams, token);
     }
 
     public User getUserFromToken(String token) {
+
         String email = jwtUtil.extractUsername(token.replace("Bearer ", ""));
+        System.out.println("Looking up user by email: " + email);
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
