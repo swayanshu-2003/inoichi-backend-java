@@ -7,11 +7,9 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-public class AuthRequest {
-    private String email;
-    private String password;
-    private String name;
-    private UUID houseId;
+@NoArgsConstructor
+public class TeamSelectionRequest {
+    private UUID userId;
+    private UUID teamId;
 }

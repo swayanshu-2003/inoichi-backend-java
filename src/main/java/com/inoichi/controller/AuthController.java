@@ -1,52 +1,65 @@
 package com.inoichi.controller;
 
+import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.dto.AuthRequest;
-import com.inoichi.dto.DoctorSignupRequest;
-import com.inoichi.dto.PatientSignupRequest;
+import com.inoichi.dto.LoginResponse;
+import com.inoichi.dto.TeamSelectionRequest;
 import com.inoichi.dto.UserResponse;
 import com.inoichi.service.AuthService;
+import com.inoichi.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
-    public AuthController(AuthService authService) {
+    @Autowired
+    public AuthController(AuthService authService, UserService userService) {
         this.authService = authService;
+        this.userService = userService;
     }
 
-    @PostMapping("/signup/doctor")
-    public ResponseEntity<UserResponse> registerDoctor(@RequestBody DoctorSignupRequest request) {
-        User doctor = authService.registerDoctor(request);
-        String token = authService.authenticateAndGenerateToken(doctor.getEmail(), request.getPassword());
-
-        return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // Token in header
-                .body(new UserResponse(doctor));
-    }
-
-    @PostMapping("/signup/patient")
-    public ResponseEntity<UserResponse> registerPatient(@RequestBody PatientSignupRequest request) {
-        User patient = authService.registerPatient(request);
-        String token = authService.authenticateAndGenerateToken(patient.getEmail(), request.getPassword());
-
-        return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // Token in header
-                .body(new UserResponse(patient));
+    /**
+     * Handles user signup and returns JWT token in response headers.
+     */
+    @PostMapping("/signup")
+    public ResponseEntity<UserResponse> signup(@RequestBody AuthRequest request) {
+        UserResponse userResponse = authService.registerUser(request);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + userResponse.getToken());
+        return ResponseEntity.ok().headers(headers).body(userResponse);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserResponse> authenticateUser(@RequestBody AuthRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody AuthRequest request) {
         String token = authService.authenticateAndGenerateToken(request.getEmail(), request.getPassword());
-        User user = authService.getUserByEmail(request.getEmail());
-
-        return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // Token in header
-                .body(new UserResponse(user));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + token);
+        return ResponseEntity.ok().headers(headers).body(new LoginResponse("Login successful!", token));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getUserProfile() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = authService.getUserByEmail(email);
+        List<Team> teams = userService.getTeamsForUser(user.getId());
+        return ResponseEntity.ok(new UserResponse(user.getId(), user.getEmail(), user.getName(), teams, null));
+    }
+
+    @PostMapping("/select-team")
+    public ResponseEntity<String> selectTeam(@RequestBody TeamSelectionRequest request) {
+        userService.assignTeamToUser(request);
+        return ResponseEntity.ok("Team selection successful!");
+    }
 }

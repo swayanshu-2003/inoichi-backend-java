@@ -1,111 +1,95 @@
 package com.inoichi.service;
 
+import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
-import com.inoichi.db.model.DoctorDetails;
-import com.inoichi.db.model.PatientDetails;
-import com.inoichi.dto.DoctorSignupRequest;
-import com.inoichi.dto.PatientSignupRequest;
+import com.inoichi.dto.AuthRequest;
 import com.inoichi.dto.UserResponse;
 import com.inoichi.repository.UserRepository;
-import com.inoichi.repository.DoctorRepository;
-import com.inoichi.repository.PatientRepository;
 import com.inoichi.util.JwtUtil;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
-    private final DoctorRepository doctorRepository;
-    private final PatientRepository patientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
     public AuthService(
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
-            DoctorRepository doctorRepository,
-            PatientRepository patientRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
-        this.doctorRepository = doctorRepository;
-        this.patientRepository = patientRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
     }
 
-    public User registerDoctor(DoctorSignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already in use");
+    /**
+     * Registers a new user and returns a response with a JWT token.
+     */
+    public UserResponse registerUser(AuthRequest request) {
+        // Check if user already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("User with this email already exists.");
         }
 
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("DOCTOR");
-        user.setName(request.getName());
-        user.setAge(request.getAge());
-        user.setGender(request.getGender());
-        user.setAddress(request.getAddress());
+        // Encrypt password
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
 
-        user = userRepository.save(user);
+        // Create and save user
+        User newUser = new User();
+        newUser.setName(request.getName());
+        newUser.setEmail(request.getEmail());
+        newUser.setPassword(hashedPassword);
+        userRepository.save(newUser);
 
-        DoctorDetails doctorDetails = new DoctorDetails();
-        doctorDetails.setUser(user);
-        doctorDetails.setSpecialization(request.getSpecialization());
-        doctorDetails.setYearsOfExperience(request.getYearsOfExperience());
-        doctorDetails.setOrganization(request.getOrganization());
-        doctorDetails.setAbout(request.getAbout());
+        // Generate JWT Token
+        String token = jwtUtil.generateToken(request.getEmail());
 
-        doctorRepository.save(doctorDetails);
+        // Fetch available teams (Modify logic as needed)
+        List<Team> availableTeams = new ArrayList<>(); // Replace with actual team fetching logic
 
-        return user;
+        // Return response
+        return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), availableTeams, token);
+    }
+    public User getUserFromToken(String token) {
+        String email = jwtUtil.extractUsername(token.replace("Bearer ", ""));
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public User registerPatient(PatientSignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already in use");
-        }
 
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("PATIENT");
-        user.setName(request.getName());
-        user.setAge(request.getAge());
-        user.setGender(request.getGender());
-        user.setAddress(request.getAddress());
-
-        user = userRepository.save(user);
-
-        PatientDetails patientDetails = new PatientDetails();
-        patientDetails.setUser(user);
-        patientDetails.setWeight(request.getWeight());
-        patientDetails.setHeight(request.getHeight());
-        patientDetails.setBmi(request.getBmi());
-        patientDetails.setPreferredLanguage(request.getPreferredLanguage());
-        patientDetails.setChronicDiseases(request.getChronicDiseases());
-        patientDetails.setBloodGroup(request.getBloodGroup());
-        patientDetails.setEmergencyContactDetails(request.getEmergencyContactDetails());
-
-        patientRepository.save(patientDetails);
-
-        return user;
-    }
-
+    /**
+     * Authenticates an existing user and returns a JWT token.
+     */
     public String authenticateAndGenerateToken(String email, String password) {
-        authenticationManager.authenticate(
-                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(email, password)
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
+        } catch (AuthenticationException e) {
+            throw new RuntimeException("Invalid email or password.");
+        }
+
         return jwtUtil.generateToken(email);
     }
 
+    /**
+     * Fetches user details by email.
+     */
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));

@@ -6,9 +6,9 @@ spring:
   application:
     name: inoichi
   datasource:
-    url: jdbc:postgresql://inoichi-db-tuincat-d515.h.aivencloud.com:28642/defaultdb?ssl=require
+    url: jdbc:postgresql://untitled-tuincat-d515.k.aivencloud.com:28642/defaultdb?ssl=require
     username: avnadmin
-    password: AVNS_qKcMoh607mJfWww6n3U
+    password: AVNS_AiLwbPlu6smjbS0rJCW
   springdoc:
     api-docs:
       path: /api-docs

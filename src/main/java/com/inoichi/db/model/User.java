@@ -2,12 +2,14 @@ package com.inoichi.db.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
@@ -21,12 +23,13 @@ public class User {
 
     @Column(nullable = false)
     private String password;
-
-    @Column(nullable = false)
-    private String role;
-
     private String name;
-    private int age;
-    private String gender;
-    private String address;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<UserTeam> userTeams; // Link to UserTeam
+
+    public List<Team> getTeams() {
+        return userTeams.stream()
+                .map(UserTeam::getTeam)
+                .collect(Collectors.toList());
+    }
 }
