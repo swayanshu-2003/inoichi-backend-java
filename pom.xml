@@ -83,7 +83,7 @@
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.flywaydb/flyway-core -->
-		<dependency>
+		<!--<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
 			<version>11.4.1</version>
@@ -93,7 +93,7 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 			<version>11.4.1</version>
 			<scope>runtime</scope>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

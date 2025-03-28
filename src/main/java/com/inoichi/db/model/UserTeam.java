@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Data
-@Table(name = "user_teams")
+@Table(name = "user_teams", schema = "app")
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserTeam {

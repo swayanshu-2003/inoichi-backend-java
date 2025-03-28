@@ -8,7 +8,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", schema = "app")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

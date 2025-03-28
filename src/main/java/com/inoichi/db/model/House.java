@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Data
-@Table(name = "houses")
+@Table(name = "houses", schema = "app")
 @AllArgsConstructor
 @NoArgsConstructor
 public class House {
