@@ -56,17 +56,21 @@ public class AuthService {
         newUser.setEmail(request.getEmail());
         newUser.setPassword(hashedPassword);
         newUser.setGeolocation(request.getGeolocation());
+        newUser.setXp(0); // New users start with 0 XP
 
         userRepository.save(newUser);
 
         String token = jwtUtil.generateToken(request.getEmail());
+
+        int level = calculateLevel(0); // Since XP is 0, level should be 1
 
         return new UserResponse(
                 newUser.getId(),
                 newUser.getEmail(),
                 newUser.getName(),
                 newUser.getGeolocation(),
-                0,
+                0,    // XP value
+                level, // Computed level
                 Collections.emptyList(),
                 0,
                 0,
@@ -93,12 +97,15 @@ public class AuthService {
         User user = getUserByEmail(email);
         String token = jwtUtil.generateToken(email);
 
+        int level = calculateLevel(user.getXp()); // Calculate level based on user's XP
+
         return new UserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getGeolocation(),
-                user.getXp(),
+                user.getXp(), // XP value
+                level,        // Computed level
                 Collections.emptyList(),
                 0,
                 0,
@@ -185,5 +192,10 @@ public class AuthService {
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    }
+
+    // Helper method to calculate level based on XP
+    private int calculateLevel(int xp) {
+        return (xp / 50) + 1;
     }
 }

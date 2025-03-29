@@ -66,19 +66,23 @@ public class AuthController {
         int treesPlanted = userService.getActivityCount(user.getId(), "TREE_PLANTATION");
         int litterCleaned = userService.getActivityCount(user.getId(), "LITTER_CLEANUP");
         int publicTransportUsed = userService.getActivityCount(user.getId(), "TICKET_VERIFICATION");
+        // Calculate level
+        int level = calculateLevel(user.getXp());
 
         return ResponseEntity.ok(new UserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getGeolocation(),
-                user.getXp(), // Assuming XP is stored in User entity
-                teamXpInfos, // Include teams with XP details
+                user.getXp(),  // XP value
+                level,         // Computed level
+                teamXpInfos,   // Include teams with XP details
                 treesPlanted,
                 litterCleaned,
                 publicTransportUsed,
                 null // Token not needed for this endpoint
         ));
+
     }
     @GetMapping("/user/{userId}")
     public ResponseEntity<UserResponse> getUserProfileById(@PathVariable UUID userId) {
@@ -92,13 +96,17 @@ public class AuthController {
         int litterCleaned = userService.getActivityCount(user.getId(), "LITTER_CLEANUP");
         int publicTransportUsed = userService.getActivityCount(user.getId(), "TICKET_VERIFICATION");
 
+        // Calculate level
+        int level = calculateLevel(user.getXp());
+
         return ResponseEntity.ok(new UserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getGeolocation(),
-                user.getXp(),
-                teamXpInfos,
+                user.getXp(),  // XP value
+                level,         // Computed level
+                teamXpInfos,   // Include teams with XP details
                 treesPlanted,
                 litterCleaned,
                 publicTransportUsed,
@@ -109,6 +117,10 @@ public class AuthController {
     public ResponseEntity<List<UserCoordinatesResponse>> getAllUserCoordinates() {
         List<UserCoordinatesResponse> userCoordinates = authService.getAllUserCoordinates();
         return ResponseEntity.ok(userCoordinates);
+    }
+    // Helper method to calculate level
+    private int calculateLevel(int xp) {
+        return (xp / 50) + 1;
     }
 
 

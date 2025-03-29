@@ -16,6 +16,7 @@ public class UserResponse {
     private String name;
     private String geolocation;  // Include geolocation
     private int xp;  // User XP
+    private int level;
 
     private List<TeamXpInfo> teams;  // Teams with XP details
 
