@@ -105,6 +105,12 @@ public class AuthController {
                 null // Token not needed for this endpoint
         ));
     }
+    @GetMapping("/users/coordinates")
+    public ResponseEntity<List<UserCoordinatesResponse>> getAllUserCoordinates() {
+        List<UserCoordinatesResponse> userCoordinates = authService.getAllUserCoordinates();
+        return ResponseEntity.ok(userCoordinates);
+    }
+
 
 
 

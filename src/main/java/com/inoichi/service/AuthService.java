@@ -3,10 +3,7 @@ package com.inoichi.service;
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserTeam;
-import com.inoichi.dto.AuthRequest;
-import com.inoichi.dto.TeamWithHouseInfo;
-import com.inoichi.dto.TeamXpInfo;
-import com.inoichi.dto.UserResponse;
+import com.inoichi.dto.*;
 import com.inoichi.repository.TeamRepository;
 import com.inoichi.repository.UserRepository;
 import com.inoichi.repository.UserTeamRepository;
@@ -16,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 
 import java.util.*;
@@ -34,6 +30,8 @@ public class AuthService {
     private UserTeamRepository userTeamRepository;
     @Autowired
     private TeamRepository teamRepository;
+
+    @Autowired
     public AuthService(
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
@@ -46,9 +44,6 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    /**
-     * Registers a new user and returns a response with a JWT token.
-     */
     public UserResponse registerUser(AuthRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("User with this email already exists.");
@@ -56,7 +51,6 @@ public class AuthService {
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
 
-        // Create and save the user
         User newUser = new User();
         newUser.setName(request.getName());
         newUser.setEmail(request.getEmail());
@@ -65,32 +59,6 @@ public class AuthService {
 
         userRepository.save(newUser);
 
-        // Create the user-team relation and fetch house names
-        List<TeamWithHouseInfo> teams = request.getTeamIds().stream()
-                .map(teamId -> {
-                    Team team = teamRepository.findById(teamId)
-                            .orElseThrow(() -> new RuntimeException("Team not found: " + teamId));
-
-                    // Retrieve the house name from the team (since each team has a house)
-                    String houseName = team.getHouse().getName();  // Assuming House entity has `getName()`
-
-                    // Return the TeamWithHouseInfo object with house name
-                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseName);
-                })
-                .collect(Collectors.toList());
-
-        // Save the user-team relations
-        for (TeamWithHouseInfo teamInfo : teams) {
-            Team team = teamRepository.findById(teamInfo.getId())
-                    .orElseThrow(() -> new RuntimeException("Team not found: " + teamInfo.getId()));
-
-            UserTeam userTeam = new UserTeam();
-            userTeam.setUser(newUser);
-            userTeam.setTeam(team);
-            userTeamRepository.save(userTeam);
-        }
-
-        // Generate JWT token
         String token = jwtUtil.generateToken(request.getEmail());
 
         return new UserResponse(
@@ -98,31 +66,21 @@ public class AuthService {
                 newUser.getEmail(),
                 newUser.getName(),
                 newUser.getGeolocation(),
-                0, // New user starts with 0 XP
-                teams.stream().map(team -> new TeamXpInfo(team.getId(), team.getName(), 0)).collect(Collectors.toList()), // Empty XP for new user
-                0, // No trees planted yet
-                0, // No litter cleaned yet
-                0, // No public transport used yet
+                0,
+                Collections.emptyList(),
+                0,
+                0,
+                0,
                 token
         );
-
     }
 
-
-
     public User getUserFromToken(String token) {
-
         String email = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        System.out.println("Looking up user by email: " + email);
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-
-
-    /**
-     * Authenticates an existing user and returns a JWT token.
-     */
     public UserResponse authenticateAndGenerateToken(String email, String password) {
         try {
             authenticationManager.authenticate(
@@ -133,15 +91,6 @@ public class AuthService {
         }
 
         User user = getUserByEmail(email);
-        List<TeamXpInfo> teamXpInfos = userTeamRepository.findByUserId(user.getId()).stream()
-                .map(userTeam -> new TeamXpInfo(userTeam.getTeam().getId(), userTeam.getTeam().getName(), 0)) // Assuming 0 XP for now
-                .collect(Collectors.toList());
-
-        // Fetch activity counts
-        int treesPlanted = 0;  // Fetch from userService if applicable
-        int litterCleaned = 0;  // Fetch from userService if applicable
-        int publicTransportUsed = 0;  // Fetch from userService if applicable
-
         String token = jwtUtil.generateToken(email);
 
         return new UserResponse(
@@ -149,26 +98,92 @@ public class AuthService {
                 user.getEmail(),
                 user.getName(),
                 user.getGeolocation(),
-                user.getXp(), // Fetch XP from the User entity
-                teamXpInfos,
-                treesPlanted,
-                litterCleaned,
-                publicTransportUsed,
+                user.getXp(),
+                Collections.emptyList(),
+                0,
+                0,
+                0,
                 token
         );
     }
 
-
-
-    /**
-     * Fetches user details by email.
-     */
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
+
     public User getUserById(UUID uuid) {
         return userRepository.findById(uuid)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public List<UserCoordinatesResponse> getAllUserCoordinates() {
+        List<User> users = userRepository.findAll();
+        List<UserCoordinatesResponse> userCoordinates = users.stream()
+                .map(user -> new UserCoordinatesResponse(user.getId(), user.getName(), user.getGeolocation()))
+                .collect(Collectors.toList());
+
+        int incrementFactor = 1;
+        for (int i = 0; i < userCoordinates.size(); i++) {
+            for (int j = i + 1; j < userCoordinates.size(); j++) {
+                UserCoordinatesResponse user1 = userCoordinates.get(i);
+                UserCoordinatesResponse user2 = userCoordinates.get(j);
+
+                if (areCoordinatesClose(user1.getGeolocation(), user2.getGeolocation())) {
+                    user1.setGeolocation(addFiveToCoordinates(user1.getGeolocation(), incrementFactor++));
+                    user2.setGeolocation(addFiveToCoordinates(user2.getGeolocation(), incrementFactor++));
+
+                    updateUserCoordinates(user1.getUserId(), user1.getGeolocation());
+                    updateUserCoordinates(user2.getUserId(), user2.getGeolocation());
+                }
+            }
+        }
+        return userCoordinates;
+    }
+
+    private boolean areCoordinatesClose(String geo1, String geo2) {
+        try {
+            String[] coords1 = geo1.split(",");
+            String[] coords2 = geo2.split(",");
+            double lat1 = Double.parseDouble(coords1[0]);
+            double lon1 = Double.parseDouble(coords1[1]);
+            double lat2 = Double.parseDouble(coords2[0]);
+            double lon2 = Double.parseDouble(coords2[1]);
+
+            double distance = haversine(lat1, lon1, lat2, lon2);
+            return distance < 0.1;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void updateUserCoordinates(UUID userId, String newGeolocation) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            user.setGeolocation(newGeolocation);
+            userRepository.save(user);
+        }
+    }
+
+    private String addFiveToCoordinates(String geolocation, int incrementFactor) {
+        try {
+            String[] coords = geolocation.split(",");
+            double lat = Double.parseDouble(coords[0]) + (5 * incrementFactor);
+            double lon = Double.parseDouble(coords[1]) + (5 * incrementFactor);
+            return lat + "," + lon;
+        } catch (Exception e) {
+            return geolocation;
+        }
+    }
+
+    private double haversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 }
