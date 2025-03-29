@@ -5,6 +5,7 @@ import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserTeam;
 import com.inoichi.dto.AuthRequest;
 import com.inoichi.dto.TeamWithHouseInfo;
+import com.inoichi.dto.TeamXpInfo;
 import com.inoichi.dto.UserResponse;
 import com.inoichi.repository.TeamRepository;
 import com.inoichi.repository.UserRepository;
@@ -92,7 +93,19 @@ public class AuthService {
         // Generate JWT token
         String token = jwtUtil.generateToken(request.getEmail());
 
-        return new UserResponse(newUser.getId(), newUser.getEmail(), newUser.getName(), newUser.getGeolocation(), teams, token);
+        return new UserResponse(
+                newUser.getId(),
+                newUser.getEmail(),
+                newUser.getName(),
+                newUser.getGeolocation(),
+                0, // New user starts with 0 XP
+                teams.stream().map(team -> new TeamXpInfo(team.getId(), team.getName(), 0)).collect(Collectors.toList()), // Empty XP for new user
+                0, // No trees planted yet
+                0, // No litter cleaned yet
+                0, // No public transport used yet
+                token
+        );
+
     }
 
 
@@ -119,22 +132,32 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password.");
         }
 
-        // Fetch user and teams with house names
         User user = getUserByEmail(email);
-        List<TeamWithHouseInfo> teams = userTeamRepository.findByUserId(user.getId()).stream()
-                .map(userTeam -> {
-                    Team team = userTeam.getTeam();
-                    String houseName = team.getHouse().getName();  // Get house name instead of house ID
-                    return new TeamWithHouseInfo(team.getId(), team.getName(), houseName);
-                })
+        List<TeamXpInfo> teamXpInfos = userTeamRepository.findByUserId(user.getId()).stream()
+                .map(userTeam -> new TeamXpInfo(userTeam.getTeam().getId(), userTeam.getTeam().getName(), 0)) // Assuming 0 XP for now
                 .collect(Collectors.toList());
 
-        // Generate JWT token
+        // Fetch activity counts
+        int treesPlanted = 0;  // Fetch from userService if applicable
+        int litterCleaned = 0;  // Fetch from userService if applicable
+        int publicTransportUsed = 0;  // Fetch from userService if applicable
+
         String token = jwtUtil.generateToken(email);
 
-        // Return response with user data and teams
-        return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getGeolocation(), teams, token);
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getGeolocation(),
+                user.getXp(), // Fetch XP from the User entity
+                teamXpInfos,
+                treesPlanted,
+                litterCleaned,
+                publicTransportUsed,
+                token
+        );
     }
+
 
 
     /**

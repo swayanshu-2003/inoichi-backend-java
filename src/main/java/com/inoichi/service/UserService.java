@@ -1,13 +1,13 @@
 package com.inoichi.service;
 
 import com.inoichi.db.model.*;
-import com.inoichi.dto.PublicTransportRequestDTO;
-import com.inoichi.dto.TeamWithHouseInfo;
-import com.inoichi.dto.TreeRequestDTO;
+import com.inoichi.dto.*;
 import com.inoichi.repository.*;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.swing.text.html.parser.Entity;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -24,17 +24,20 @@ public class UserService {
     private HouseRepository houseRepository;
     @Autowired
     private TreeRepository treeRepository;
+    private EntityManager entityManager;
 
     @Autowired
     private PublicTransportRepository transportRepository;
     public UserService(
             UserRepository userRepository,
             TeamRepository teamRepository,
-            UserTeamRepository userTeamRepository
+            UserTeamRepository userTeamRepository,
+            EntityManager entityManager
     ) {
         this.userRepository = userRepository;
         this.teamRepository = teamRepository;
         this.userTeamRepository = userTeamRepository;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -53,6 +56,16 @@ public class UserService {
                 })
                 .collect(Collectors.toList());
     }
+    public int getActivityCount(UUID userId, String activityType) {
+        String query = "SELECT COUNT(ua) FROM UserActivity ua WHERE ua.user.id = :userId AND ua.activityType = :activityType";
+        return entityManager.createQuery(query, Long.class)
+                .setParameter("userId", userId)
+                .setParameter("activityType", activityType)
+                .getSingleResult()
+                .intValue();
+    }
+
+
 
 
     /**
@@ -109,6 +122,19 @@ public class UserService {
 
         return "Transport details added successfully";
     }
+    public List<TeamXpInfo> getTeamXpForUser(UUID userId) {
+        return entityManager.createQuery(
+                        "SELECT new com.inoichi.dto.TeamXpInfo(t.id, t.name, t.xp) " +
+                                "FROM UserTeam ut " +
+                                "JOIN ut.team t " +
+                                "WHERE ut.user.id = :userId",
+                        TeamXpInfo.class)
+                .setParameter("userId", userId)
+                .getResultList();
+    }
+
+
+
 }
 
 

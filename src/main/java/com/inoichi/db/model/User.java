@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,12 @@ public class User {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<UserTeam> userTeams;
+
+    @ManyToMany(mappedBy = "members")
+    private Set<Team> teams;
+
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int xp; // Ensure XP is initialized to 0
 
     public List<Team> getTeams() {
         return userTeams.stream()

@@ -2,11 +2,7 @@ package com.inoichi.controller;
 
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
-import com.inoichi.dto.AuthRequest;
-import com.inoichi.dto.LoginResponse;
-import com.inoichi.dto.TeamSelectionRequest;
-import com.inoichi.dto.UserResponse;
-import com.inoichi.dto.TeamWithHouseInfo;  // Import the TeamWithHouseInfo DTO
+import com.inoichi.dto.*;
 import com.inoichi.service.AuthService;
 import com.inoichi.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,18 +58,28 @@ public class AuthController {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = authService.getUserByEmail(email);
 
-        // Ensure this method returns List<TeamWithHouseInfo> with house names
-        List<TeamWithHouseInfo> teams = userService.getTeamsForUser(user.getId());
+        // Fetch teams and their XP
+        List<TeamXpInfo> teamXpInfos = userService.getTeamXpForUser(user.getId());
+
+        // Fetch activity counts
+        int treesPlanted = userService.getActivityCount(user.getId(), "TREE_PLANTATION");
+        int litterCleaned = userService.getActivityCount(user.getId(), "LITTER_CLEANUP");
+        int publicTransportUsed = userService.getActivityCount(user.getId(), "TICKET_VERIFICATION");
 
         return ResponseEntity.ok(new UserResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getGeolocation(),  // Include geolocation in response
-                teams,
-                null  // Token is not needed in this method, as it's not a login operation
+                user.getGeolocation(),
+                user.getXp(), // Assuming XP is stored in User entity
+                teamXpInfos, // Include teams with XP details
+                treesPlanted,
+                litterCleaned,
+                publicTransportUsed,
+                null // Token not needed for this endpoint
         ));
     }
+
 
 
 }

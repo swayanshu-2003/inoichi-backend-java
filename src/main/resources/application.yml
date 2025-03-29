@@ -6,6 +6,12 @@ spring:
     url: jdbc:postgresql://untitled-tuincat-d515.k.aivencloud.com:28642/defaultdb?ssl=require
     username: avnadmin
     password: AVNS_AiLwbPlu6smjbS0rJCW
+    hikari:
+      maximum-pool-size: 3      # Limit max connections to 10
+      minimum-idle: 5            # Minimum idle connections
+      idle-timeout: 30000        # Idle timeout in milliseconds (30 seconds)
+      max-lifetime: 1800000      # Maximum lifetime of a connection (30 minutes)
+      connection-timeout: 30000
   springdoc:
     api-docs:
       path: /api-docs
@@ -37,6 +43,12 @@ logging:
         security: DEBUG
       web:
         DEBUG
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
 google:
   api:
     key: "AIzaSyCJB_xuGXMvAWzphLncCv5-HvDp6SsOGqU"

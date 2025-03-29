@@ -2,6 +2,14 @@ package com.inoichi.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.inoichi.db.model.Team;
+import com.inoichi.db.model.User;
+import com.inoichi.db.model.UserActivity;
+import com.inoichi.dto.XpAwardResponse;
+import com.inoichi.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -11,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -18,6 +27,10 @@ public class GeminiApiService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Value("${google.api.key}")
     private String apiKey;
@@ -25,117 +38,157 @@ public class GeminiApiService {
     @Value("${google.api.base_url}")
     private String baseUrl;
 
-    // Autowire RestTemplate
-    public GeminiApiService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public GeminiApiService(RestTemplate restTemplate, ObjectMapper objectMapper,
+                            UserRepository userRepository) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.userRepository = userRepository;
+        log.info("GeminiApiService initialized with repositories and configs");
     }
 
-    // 🔹 Compare Before & After Images
-    public String checkLitterService(MultipartFile beforeImage, MultipartFile afterImage) throws Exception {
-        Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
-        String beforeUri = uploadedFiles.get("before");
-        String afterUri = uploadedFiles.get("after");
+    // ------------------------------
+    // Public methods for verification
+    // ------------------------------
 
-        String prompt = "Compare the two images. The first image shows an area with litter, and the second image shows the same area.Please analyze the second image and confirm if the litter has been cleaned up and if the area looks better and more pristine.Indicate whether the second image corresponds to the first image in terms of showing a cleaned area and not just an unrelated image. Answer with 'yes' if the litter has been cleaned and the second image is related, or 'no' if the changes are not significant or if the images are unrelated";
+    // 🔹 Check Litter Cleanup (requires two images)
+    @Transactional
+    public String checkLitterService(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
+        log.info("Starting litter cleanup check for user: {}", userId);
+        log.debug("Before image name: {}, size: {}", beforeImage.getOriginalFilename(), beforeImage.getSize());
+        log.debug("After image name: {}, size: {}", afterImage.getOriginalFilename(), afterImage.getSize());
 
-        JsonNode response = generateContent(beforeUri, afterUri, prompt);
-        String aiResponse = response.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+        try {
+            Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
+            log.info("Successfully uploaded both images for litter check");
 
-        log.info("AI Response: {}", aiResponse);
+            String beforeUri = uploadedFiles.get("before");
+            String afterUri = uploadedFiles.get("after");
+            log.debug("Before URI: {}", beforeUri);
+            log.debug("After URI: {}", afterUri);
 
-        if (aiResponse.toLowerCase().contains("yes")) {
-            return "Litter has been cleaned! 🎉 You earned +200 XP!";
-        } else {
-            return "No significant changes detected. Clean more and try again!";
+            String prompt = "Compare the two images. The first image shows an area with litter, and the second image shows the same area. Please analyze the second image and confirm if the litter has been cleaned up in that area";
+            log.info("Sending litter cleanup prompt to Gemini API");
+
+            JsonNode response = generateContent(beforeUri, afterUri, prompt);
+            log.info("Received response from Gemini API for litter check");
+
+            String aiResponse = extractAiResponse(response);
+            log.info("AI Response for litter check: {}", aiResponse);
+
+            if (aiResponse.toLowerCase().contains("yes")) {
+                log.info("Litter cleanup detected, awarding 10 XP to user: {}", userId);
+                try {
+                    addXpToUser(userId, 10,"LITTER_CLEANUP"); // Award 10 XP for litter cleanup
+                    log.info("Successfully awarded 10 XP for litter cleanup to user: {}", userId);
+                    return "Litter has been cleaned! You earned +10 XP!";
+                } catch (Exception e) {
+                    log.error("Failed to award XP for litter cleanup to user: {}", userId, e);
+                    throw new Exception("XP award failed: " + e.getMessage());
+                }
+            } else {
+                log.info("No significant litter cleanup detected for user: {}", userId);
+                return "No significant changes detected. Try again!";
+            }
+        } catch (Exception e) {
+            log.error("Error in litter cleanup check process: {}", e.getMessage(), e);
+            throw e;
         }
     }
-    // 🔹 Compare Before & After Images
-    public String checkTreePlantation(MultipartFile beforeImage, MultipartFile afterImage) throws Exception {
-        Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
-        String beforeUri = uploadedFiles.get("before");
-        String afterUri = uploadedFiles.get("after");
 
-        String prompt = "Compare these two images. Is there a noticeable difference between the first and second images, specifically in terms of tree plantation (e.g., trees planted in the second image)?";
+    // 🔹 Check Tree Plantation (requires two images)
+    @Transactional
+    public String checkTreePlantation(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
+        log.info("Starting tree plantation check for user: {}", userId);
+        log.debug("Before image name: {}, size: {}", beforeImage.getOriginalFilename(), beforeImage.getSize());
+        log.debug("After image name: {}, size: {}", afterImage.getOriginalFilename(), afterImage.getSize());
 
-        JsonNode response = generateContent(beforeUri, afterUri, prompt);
-        String aiResponse = response.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+        try {
+            Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
+            log.info("Successfully uploaded both images for tree plantation check");
 
-        log.info("AI Response: {}", aiResponse);
+            String beforeUri = uploadedFiles.get("before");
+            String afterUri = uploadedFiles.get("after");
+            log.debug("Before URI: {}", beforeUri);
+            log.debug("After URI: {}", afterUri);
 
-        if (aiResponse.toLowerCase().contains("yes")) {
-            return "Tree has been planted! 🎉 You earned +200 XP!";
-        } else {
-            return "No significant changes detected. Plant more and try again!";
+            String prompt = "Compare these two images. Is there a noticeable difference between the first and second images specifically in terms of tree plantation (e.g., trees planted in the second image)?";
+            log.info("Sending tree plantation prompt to Gemini API");
+
+            JsonNode response = generateContent(beforeUri, afterUri, prompt);
+            log.info("Received response from Gemini API for tree plantation check");
+
+            String aiResponse = extractAiResponse(response);
+            log.info("AI Response for tree plantation check: {}", aiResponse);
+
+            if (aiResponse.toLowerCase().contains("yes")) {
+                log.info("Tree plantation detected, awarding 20 XP to user: {}", userId);
+                try {
+                    addXpToUser(userId, 20, "LITTER_CLEANUP"); // Award 20 XP for tree plantation
+                    log.info("Successfully awarded 20 XP for tree plantation to user: {}", userId);
+                    return "Tree has been planted! You earned +20 XP!";
+                } catch (Exception e) {
+                    log.error("Failed to award XP for tree plantation to user: {}", userId, e);
+                    throw new Exception("XP award failed: " + e.getMessage());
+                }
+            } else {
+                log.info("No significant tree plantation detected for user: {}", userId);
+                return "No significant changes detected. Try again!";
+            }
+        } catch (Exception e) {
+            log.error("Error in tree plantation check process: {}", e.getMessage(), e);
+            throw e;
         }
     }
-    // 🔹 Compare Before & After Images
-    public String checkTicket(MultipartFile beforeImage, MultipartFile afterImage) throws Exception {
-        Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
-        String beforeUri = uploadedFiles.get("before");
-        String afterUri = uploadedFiles.get("after");
 
-        String prompt = "Analyze this ticket image and verify:1. Is this a valid public transport ticket (Bus/Train/Metro)?2. Does it have a valid date?3. Is the user contributing to CO₂ reduction by using public transport?";
+    // 🔹 Check Ticket (requires only one image)
+    @Transactional
+    public String checkTicket(MultipartFile ticketImage, UUID userId) throws Exception {
+        log.info("Starting ticket verification check for user: {}", userId);
+        log.debug("Ticket image name: {}, size: {}", ticketImage.getOriginalFilename(), ticketImage.getSize());
 
-        JsonNode response = generateContent(beforeUri, afterUri, prompt);
-        String aiResponse = response.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
+        try {
+            String ticketUri = uploadFileToGoogle(ticketImage);
+            log.info("Successfully uploaded ticket image");
+            log.debug("Ticket URI: {}", ticketUri);
 
-        log.info("AI Response: {}", aiResponse);
+            String prompt = "Analyze this ticket image and verify: 1. Is this a valid public transport ticket (Bus/Train/Metro)? 2. Does it have a valid date? 3. Is the user contributing to CO₂ reduction by using public transport?";
+            log.info("Sending ticket verification prompt to Gemini API");
 
-        if (aiResponse.toLowerCase().contains("yes")) {
-            return "Tree has been planted! 🎉 You earned +200 XP!";
-        } else {
-            return "No significant changes detected. Plant more and try again!";
+            JsonNode response = generateContent(ticketUri, prompt);
+            log.info("Received response from Gemini API for ticket verification");
+
+            String aiResponse = extractAiResponse(response);
+            log.info("AI Response for ticket verification: {}", aiResponse);
+
+            if (aiResponse.toLowerCase().contains("yes")) {
+                log.info("Valid public transport ticket detected, awarding 30 XP to user: {}", userId);
+                try {
+                    addXpToUser(userId, 30,"TICKET_VERIFICATION"); // Award 30 XP for using public transport
+                    log.info("Successfully awarded 30 XP for public transport to user: {}", userId);
+                    return "Public transport used! You earned +30 XP!";
+                } catch (Exception e) {
+                    log.error("Failed to award XP for public transport to user: {}", userId, e);
+                    throw new Exception("XP award failed: " + e.getMessage());
+                }
+            } else {
+                log.info("No valid public transport ticket detected for user: {}", userId);
+                return "Invalid ticket. Try again!";
+            }
+        } catch (Exception e) {
+            log.error("Error in ticket verification process: {}", e.getMessage(), e);
+            throw e;
         }
     }
-    // 🔹 Upload TWO Files & Return URIs
-    private Map<String, String> uploadMultipleFiles(MultipartFile before, MultipartFile after) throws Exception {
-        Map<String, String> fileUris = new HashMap<>();
-        fileUris.put("before", uploadFileToGoogle(before));
-        fileUris.put("after", uploadFileToGoogle(after));
-        return fileUris;
-    }
 
-    // 🔹 Upload a Single File to Google
-    private String uploadFileToGoogle(MultipartFile file) throws Exception {
-        String uploadUrl = String.format("%s/upload/v1beta/files?key=%s", baseUrl, apiKey);
+    // ------------------------------
+    // Helper methods
+    // ------------------------------
 
-        HttpHeaders startHeaders = new HttpHeaders();
-        startHeaders.set("X-Goog-Upload-Protocol", "resumable");
-        startHeaders.set("X-Goog-Upload-Command", "start");
-        startHeaders.set("X-Goog-Upload-Header-Content-Length", String.valueOf(file.getSize()));
-        startHeaders.set("X-Goog-Upload-Header-Content-Type", file.getContentType());
-        startHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-        String jsonBody = String.format("{\"file\": {\"display_name\": \"%s\"}}", file.getOriginalFilename());
-
-        HttpEntity<String> startRequest = new HttpEntity<>(jsonBody, startHeaders);
-        ResponseEntity<String> startResponse = restTemplate.exchange(uploadUrl, HttpMethod.POST, startRequest, String.class);
-
-        String sessionUri = startResponse.getHeaders().getFirst("X-Goog-Upload-URL");
-        if (sessionUri == null || sessionUri.isEmpty()) {
-            throw new Exception("Failed to obtain upload session URI.");
-        }
-
-        HttpHeaders uploadHeaders = new HttpHeaders();
-        uploadHeaders.set("X-Goog-Upload-Protocol", "resumable");
-        uploadHeaders.set("X-Goog-Upload-Command", "upload, finalize");
-        uploadHeaders.set("X-Goog-Upload-Offset", "0");
-        uploadHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-
-        HttpEntity<byte[]> uploadRequest = new HttpEntity<>(file.getBytes(), uploadHeaders);
-        ResponseEntity<String> uploadResponse = restTemplate.exchange(sessionUri, HttpMethod.POST, uploadRequest, String.class);
-
-        if (uploadResponse.getBody() == null) {
-            throw new Exception("Empty response from Google API during file upload.");
-        }
-
-        return objectMapper.readTree(uploadResponse.getBody()).path("file").path("uri").asText();
-    }
-
-    // 🔹 Generate Content Using Gemini AI
+    // Overloaded: Generate Content using Gemini AI (for two images)
     private JsonNode generateContent(String beforeUri, String afterUri, String prompt) throws Exception {
+        log.info("Generating content with two images");
         String url = String.format("%s/v1beta/models/gemini-1.5-flash:generateContent?key=%s", baseUrl, apiKey);
+        log.debug("API URL: {}", url);
 
         String requestBody = String.format(
                 "{ \"contents\": [ { \"role\": \"user\", \"parts\": [ " +
@@ -145,17 +198,189 @@ public class GeminiApiService {
                         " ] } ] }",
                 prompt, beforeUri, afterUri
         );
+        log.debug("Request body prepared with prompt and two image URIs");
 
+        return sendRequestToGemini(url, requestBody);
+    }
+
+    // Overloaded: Generate Content using Gemini AI (for one image)
+    private JsonNode generateContent(String imageUri, String prompt) throws Exception {
+        log.info("Generating content with one image");
+        String url = String.format("%s/v1beta/models/gemini-1.5-flash:generateContent?key=%s", baseUrl, apiKey);
+        log.debug("API URL: {}", url);
+
+        String requestBody = String.format(
+                "{ \"contents\": [ { \"role\": \"user\", \"parts\": [ " +
+                        "{ \"text\": \"%s\" }, " +
+                        "{ \"fileData\": { \"fileUri\": \"%s\" } } " +
+                        " ] } ] }",
+                prompt, imageUri
+        );
+        log.debug("Request body prepared with prompt and one image URI");
+
+        return sendRequestToGemini(url, requestBody);
+    }
+
+    // Send request to Gemini API and return parsed JSON response
+    private JsonNode sendRequestToGemini(String url, String requestBody) throws Exception {
+        log.info("Sending request to Gemini API");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+        try {
+            log.debug("Executing HTTP POST to Gemini API");
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            log.debug("Received HTTP status: {}", response.getStatusCode());
 
-        if (response.getBody() == null) {
-            throw new Exception("Empty response from Gemini API.");
+            if (response.getBody() == null) {
+                log.error("Empty response received from Gemini API");
+                throw new Exception("Empty response from Gemini API.");
+            }
+
+            log.info("Successfully received response from Gemini API");
+            return objectMapper.readTree(response.getBody());
+        } catch (Exception e) {
+            log.error("Error sending request to Gemini API: {}", e.getMessage(), e);
+            throw new Exception("Gemini API request failed: " + e.getMessage());
         }
-
-        return objectMapper.readTree(response.getBody());
     }
+
+    // Extract the AI-generated response text
+    private String extractAiResponse(JsonNode response) {
+        log.info("Extracting AI response text from JSON");
+        try {
+            String text = response.path("candidates").get(0)
+                    .path("content").path("parts").get(0)
+                    .path("text").asText();
+            log.debug("Extracted text: {}", text);
+            return text;
+        } catch (Exception e) {
+            log.error("Error extracting AI response: {}", e.getMessage(), e);
+            // Return empty string to avoid null pointer exceptions
+            return "";
+        }
+    }
+
+    // Upload two files and return a map with keys "before" and "after"
+    private Map<String, String> uploadMultipleFiles(MultipartFile before, MultipartFile after) throws Exception {
+        log.info("Uploading multiple files (before and after)");
+        Map<String, String> fileUris = new HashMap<>();
+
+        try {
+            log.debug("Uploading 'before' image...");
+            fileUris.put("before", uploadFileToGoogle(before));
+            log.debug("Uploading 'after' image...");
+            fileUris.put("after", uploadFileToGoogle(after));
+            log.info("Successfully uploaded both files");
+            return fileUris;
+        } catch (Exception e) {
+            log.error("Error uploading multiple files: {}", e.getMessage(), e);
+            throw new Exception("File upload failed: " + e.getMessage());
+        }
+    }
+
+    // Upload a single file and return its URI
+    private String uploadFileToGoogle(MultipartFile file) throws Exception {
+        log.info("Uploading file: {}, size: {}", file.getOriginalFilename(), file.getSize());
+        String uploadUrl = String.format("%s/upload/v1beta/files?key=%s", baseUrl, apiKey);
+        log.debug("Upload URL: {}", uploadUrl);
+
+        // Start upload session
+        log.debug("Starting upload session");
+        HttpHeaders startHeaders = new HttpHeaders();
+        startHeaders.set("X-Goog-Upload-Protocol", "resumable");
+        startHeaders.set("X-Goog-Upload-Command", "start");
+        startHeaders.set("X-Goog-Upload-Header-Content-Length", String.valueOf(file.getSize()));
+        startHeaders.set("X-Goog-Upload-Header-Content-Type", file.getContentType());
+        startHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+        String jsonBody = String.format("{\"file\": {\"display_name\": \"%s\"}}", file.getOriginalFilename());
+        HttpEntity<String> startRequest = new HttpEntity<>(jsonBody, startHeaders);
+
+        try {
+            ResponseEntity<String> startResponse = restTemplate.exchange(uploadUrl, HttpMethod.POST, startRequest, String.class);
+            log.debug("Session start response status: {}", startResponse.getStatusCode());
+
+            String sessionUri = startResponse.getHeaders().getFirst("X-Goog-Upload-URL");
+            if (sessionUri == null || sessionUri.isEmpty()) {
+                log.error("Failed to obtain upload session URI");
+                throw new Exception("Failed to obtain upload session URI.");
+            }
+            log.debug("Session URI obtained: {}", sessionUri);
+
+            // Upload file
+            log.debug("Uploading file data");
+            HttpHeaders uploadHeaders = new HttpHeaders();
+            uploadHeaders.set("X-Goog-Upload-Protocol", "resumable");
+            uploadHeaders.set("X-Goog-Upload-Command", "upload, finalize");
+            uploadHeaders.set("X-Goog-Upload-Offset", "0");
+            uploadHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+            HttpEntity<byte[]> uploadRequest = new HttpEntity<>(file.getBytes(), uploadHeaders);
+            ResponseEntity<String> uploadResponse = restTemplate.exchange(sessionUri, HttpMethod.POST, uploadRequest, String.class);
+            log.debug("Upload response status: {}", uploadResponse.getStatusCode());
+
+            if (uploadResponse.getBody() == null) {
+                log.error("Empty response from Google API during file upload");
+                throw new Exception("Empty response from Google API during file upload.");
+            }
+
+            String fileUri = objectMapper.readTree(uploadResponse.getBody()).path("file").path("uri").asText();
+            log.info("File successfully uploaded, URI: {}", fileUri);
+            return fileUri;
+        } catch (Exception e) {
+            log.error("Error uploading file: {}", e.getMessage(), e);
+            throw new Exception("File upload failed: " + e.getMessage());
+        }
+    }
+
+    // ------------------------------
+    // XP update method: Only update the user XP.
+    // A database trigger will automatically update the team XP.
+    // ------------------------------
+    private XpAwardResponse addXpToUser(UUID userId, int xp, String activityType) {
+        log.info("Starting XP update for user: {}, amount: {}", userId, xp);
+
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+            int previousUserXp = user.getXp();
+            int newUserXp = previousUserXp + xp;
+            user.setXp(newUserXp);
+            userRepository.save(user);
+
+            Team team = user.getTeams().isEmpty() ? null : user.getTeams().get(0);
+            int previousTeamXp = (team != null) ? team.getXp() : 0;
+            int newTeamXp = previousTeamXp + xp;
+            if (team != null) {
+                team.setXp(newTeamXp);
+            }
+
+            UserActivity activity = UserActivity.builder()
+                    .user(user)
+                    .team(team)
+                    .activityType(activityType)
+                    .activityXp(xp)
+                    .build();
+            entityManager.persist(activity);
+
+            return XpAwardResponse.builder()
+                    .status("success")
+                    .message("XP awarded successfully!")
+                    .activity(new XpAwardResponse.ActivityInfo(activityType, activity.getId()))
+                    .user(new XpAwardResponse.UserXpInfo(user.getId(), previousUserXp, newUserXp))
+                    .team(team != null ? new XpAwardResponse.TeamXpInfo(team.getId(), previousTeamXp, newTeamXp) : null)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error updating XP for user {}: {}", userId, e.getMessage(), e);
+            return XpAwardResponse.builder()
+                    .status("failure")
+                    .message("Failed to update XP: " + e.getMessage())
+                    .build();
+        }
+    }
+
+
 }

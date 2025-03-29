@@ -1,6 +1,5 @@
 package com.inoichi.dto;
 
-import com.inoichi.db.model.Team;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,13 @@ public class UserResponse {
     private String email;
     private String name;
     private String geolocation;  // Include geolocation
-    private List<TeamWithHouseInfo> teams;
-    private String token;
+    private int xp;  // User XP
 
+    private List<TeamXpInfo> teams;  // Teams with XP details
+
+    private int treesPlanted;  // Count of trees planted
+    private int litterCleaned;  // Count of litter cleanup activities
+    private int publicTransportUsed;  // Count of public transport usage
+
+    private String token;  // JWT token (if applicable)
 }
