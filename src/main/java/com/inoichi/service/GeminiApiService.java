@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
 import com.inoichi.db.model.UserActivity;
+import com.inoichi.dto.GenericResponse;
 import com.inoichi.dto.XpAwardResponse;
 import com.inoichi.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -52,7 +53,8 @@ public class GeminiApiService {
 
     // 🔹 Check Litter Cleanup (requires two images)
     @Transactional
-    public String checkLitterService(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
+    public GenericResponse checkLitterService(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
+
         log.info("Starting litter cleanup check for user: {}", userId);
         log.debug("Before image name: {}, size: {}", beforeImage.getOriginalFilename(), beforeImage.getSize());
         log.debug("After image name: {}, size: {}", afterImage.getOriginalFilename(), afterImage.getSize());
@@ -76,109 +78,97 @@ public class GeminiApiService {
             log.info("AI Response for litter check: {}", aiResponse);
 
             if (aiResponse.toLowerCase().contains("yes")) {
-                log.info("Litter cleanup detected, awarding 10 XP to user: {}", userId);
-                try {
-                    addXpToUser(userId, 10,"LITTER_CLEANUP"); // Award 10 XP for litter cleanup
-                    log.info("Successfully awarded 10 XP for litter cleanup to user: {}", userId);
-                    return "Litter has been cleaned! You earned +10 XP!";
-                } catch (Exception e) {
-                    log.error("Failed to award XP for litter cleanup to user: {}", userId, e);
-                    throw new Exception("XP award failed: " + e.getMessage());
-                }
+                addXpToUser(userId, 10, "LITTER_CLEANUP"); // Award 10 XP
+                return GenericResponse.builder()
+                        .status("success")
+                        .message("Litter has been cleaned! You earned +10 XP!")
+                        .build();
             } else {
-                log.info("No significant litter cleanup detected for user: {}", userId);
-                return "No significant changes detected. Try again!";
+                return GenericResponse.builder()
+                        .status("failure")
+                        .message("No significant changes detected. Try again!")
+                        .build();
             }
         } catch (Exception e) {
             log.error("Error in litter cleanup check process: {}", e.getMessage(), e);
-            throw e;
+            return GenericResponse.builder()
+                    .status("error")
+                    .message("Error: " + e.getMessage())
+                    .build();
         }
     }
 
     // 🔹 Check Tree Plantation (requires two images)
     @Transactional
-    public String checkTreePlantation(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
+    public GenericResponse checkTreePlantation(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
         log.info("Starting tree plantation check for user: {}", userId);
-        log.debug("Before image name: {}, size: {}", beforeImage.getOriginalFilename(), beforeImage.getSize());
-        log.debug("After image name: {}, size: {}", afterImage.getOriginalFilename(), afterImage.getSize());
 
         try {
             Map<String, String> uploadedFiles = uploadMultipleFiles(beforeImage, afterImage);
-            log.info("Successfully uploaded both images for tree plantation check");
-
             String beforeUri = uploadedFiles.get("before");
             String afterUri = uploadedFiles.get("after");
-            log.debug("Before URI: {}", beforeUri);
-            log.debug("After URI: {}", afterUri);
 
             String prompt = "Compare these two images. Is there a noticeable difference between the first and second images specifically in terms of tree plantation (e.g., trees planted in the second image)?";
-            log.info("Sending tree plantation prompt to Gemini API");
 
             JsonNode response = generateContent(beforeUri, afterUri, prompt);
-            log.info("Received response from Gemini API for tree plantation check");
-
             String aiResponse = extractAiResponse(response);
-            log.info("AI Response for tree plantation check: {}", aiResponse);
 
             if (aiResponse.toLowerCase().contains("yes")) {
-                log.info("Tree plantation detected, awarding 20 XP to user: {}", userId);
-                try {
-                    addXpToUser(userId, 20, "LITTER_CLEANUP"); // Award 20 XP for tree plantation
-                    log.info("Successfully awarded 20 XP for tree plantation to user: {}", userId);
-                    return "Tree has been planted! You earned +20 XP!";
-                } catch (Exception e) {
-                    log.error("Failed to award XP for tree plantation to user: {}", userId, e);
-                    throw new Exception("XP award failed: " + e.getMessage());
-                }
+                addXpToUser(userId, 20, "TREE_PLANTATION"); // Award 20 XP
+                return GenericResponse.builder()
+                        .status("success")
+                        .message("Tree has been planted! You earned +20 XP!")
+                        .build();
             } else {
-                log.info("No significant tree plantation detected for user: {}", userId);
-                return "No significant changes detected. Try again!";
+                return GenericResponse.builder()
+                        .status("failure")
+                        .message("No significant changes detected. Try again!")
+                        .build();
             }
         } catch (Exception e) {
             log.error("Error in tree plantation check process: {}", e.getMessage(), e);
-            throw e;
+            return GenericResponse.builder()
+                    .status("error")
+                    .message("Error: " + e.getMessage())
+                    .build();
         }
     }
+
 
     // 🔹 Check Ticket (requires only one image)
     @Transactional
-    public String checkTicket(MultipartFile ticketImage, UUID userId) throws Exception {
+    public GenericResponse checkTicket(MultipartFile ticketImage, UUID userId) throws Exception {
         log.info("Starting ticket verification check for user: {}", userId);
-        log.debug("Ticket image name: {}, size: {}", ticketImage.getOriginalFilename(), ticketImage.getSize());
 
         try {
             String ticketUri = uploadFileToGoogle(ticketImage);
-            log.info("Successfully uploaded ticket image");
-            log.debug("Ticket URI: {}", ticketUri);
 
             String prompt = "Analyze this ticket image and verify: 1. Is this a valid public transport ticket (Bus/Train/Metro)? 2. Does it have a valid date? 3. Is the user contributing to CO₂ reduction by using public transport?";
-            log.info("Sending ticket verification prompt to Gemini API");
 
             JsonNode response = generateContent(ticketUri, prompt);
-            log.info("Received response from Gemini API for ticket verification");
-
             String aiResponse = extractAiResponse(response);
-            log.info("AI Response for ticket verification: {}", aiResponse);
 
             if (aiResponse.toLowerCase().contains("yes")) {
-                log.info("Valid public transport ticket detected, awarding 30 XP to user: {}", userId);
-                try {
-                    addXpToUser(userId, 30,"TICKET_VERIFICATION"); // Award 30 XP for using public transport
-                    log.info("Successfully awarded 30 XP for public transport to user: {}", userId);
-                    return "Public transport used! You earned +30 XP!";
-                } catch (Exception e) {
-                    log.error("Failed to award XP for public transport to user: {}", userId, e);
-                    throw new Exception("XP award failed: " + e.getMessage());
-                }
+                addXpToUser(userId, 30, "TICKET_VERIFICATION"); // Award 30 XP
+                return GenericResponse.builder()
+                        .status("success")
+                        .message("Public transport used! You earned +30 XP!")
+                        .build();
             } else {
-                log.info("No valid public transport ticket detected for user: {}", userId);
-                return "Invalid ticket. Try again!";
+                return GenericResponse.builder()
+                        .status("failure")
+                        .message("Invalid ticket. Try again!")
+                        .build();
             }
         } catch (Exception e) {
             log.error("Error in ticket verification process: {}", e.getMessage(), e);
-            throw e;
+            return GenericResponse.builder()
+                    .status("error")
+                    .message("Error: " + e.getMessage())
+                    .build();
         }
     }
+
 
     // ------------------------------
     // Helper methods

@@ -1,5 +1,6 @@
 package com.inoichi.controller;
 
+import com.inoichi.dto.GenericResponse;
 import com.inoichi.service.GeminiApiService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,42 +20,42 @@ public class GeminiController {
 
     // Endpoint for litter cleanup: requires two images (before & after) and userId
     @PostMapping("/check-litter")
-    public ResponseEntity<String> checkCleanup(
+    public ResponseEntity<GenericResponse> checkCleanup(
             @RequestParam("beforeImage") MultipartFile beforeImage,
             @RequestParam("afterImage") MultipartFile afterImage,
             @RequestParam("userId") UUID userId) {
         try {
-            String result = geminiApiService.checkLitterService(beforeImage, afterImage, userId);
+            GenericResponse result = geminiApiService.checkLitterService(beforeImage, afterImage, userId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
         }
     }
 
     // Endpoint for tree plantation: requires two images (before & after) and userId
     @PostMapping("/check-tree")
-    public ResponseEntity<String> checkTreePlantation(
+    public ResponseEntity<GenericResponse> checkTreePlantation(
             @RequestParam("beforeImage") MultipartFile beforeImage,
             @RequestParam("afterImage") MultipartFile afterImage,
             @RequestParam("userId") UUID userId) {
         try {
-            String result = geminiApiService.checkTreePlantation(beforeImage, afterImage, userId);
+            GenericResponse result = geminiApiService.checkTreePlantation(beforeImage, afterImage, userId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
         }
     }
 
     // Endpoint for ticket check: requires only one image and userId
     @PostMapping("/check-ticket")
-    public ResponseEntity<String> checkTicket(
+    public ResponseEntity<GenericResponse> checkTicket(
             @RequestParam("ticketImage") MultipartFile ticketImage,
             @RequestParam("userId") UUID userId) {
         try {
-            String result = geminiApiService.checkTicket(ticketImage, userId);
+            GenericResponse result = geminiApiService.checkTicket(ticketImage, userId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
         }
     }
 }

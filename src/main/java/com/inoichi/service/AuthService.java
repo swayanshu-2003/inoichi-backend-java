@@ -167,4 +167,8 @@ public class AuthService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
+    public User getUserById(UUID uuid) {
+        return userRepository.findById(uuid)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 }

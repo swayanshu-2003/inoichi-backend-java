@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -73,6 +74,31 @@ public class AuthController {
                 user.getGeolocation(),
                 user.getXp(), // Assuming XP is stored in User entity
                 teamXpInfos, // Include teams with XP details
+                treesPlanted,
+                litterCleaned,
+                publicTransportUsed,
+                null // Token not needed for this endpoint
+        ));
+    }
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<UserResponse> getUserProfileById(@PathVariable UUID userId) {
+        User user = authService.getUserById(userId); // Fetch user by ID
+
+        // Fetch teams and their XP
+        List<TeamXpInfo> teamXpInfos = userService.getTeamXpForUser(user.getId());
+
+        // Fetch activity counts
+        int treesPlanted = userService.getActivityCount(user.getId(), "TREE_PLANTATION");
+        int litterCleaned = userService.getActivityCount(user.getId(), "LITTER_CLEANUP");
+        int publicTransportUsed = userService.getActivityCount(user.getId(), "TICKET_VERIFICATION");
+
+        return ResponseEntity.ok(new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getGeolocation(),
+                user.getXp(),
+                teamXpInfos,
                 treesPlanted,
                 litterCleaned,
                 publicTransportUsed,
