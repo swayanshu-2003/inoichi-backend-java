@@ -3,6 +3,7 @@ package com.inoichi.repository;
 import com.inoichi.db.model.Team;
 import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -24,4 +25,6 @@ public interface TeamRepository extends JpaRepository<Team, UUID> {
 
     @Query(value = "SELECT xp FROM app.teams WHERE id = :teamId", nativeQuery = true)
     int getTeamXp(@Param("teamId") UUID teamId);
+    @Query("SELECT t FROM Team t ORDER BY t.xp DESC")
+    List<Team> findTop20TeamsByXp(Pageable pageable);
 }

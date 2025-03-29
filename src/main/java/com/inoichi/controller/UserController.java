@@ -2,6 +2,7 @@ package com.inoichi.controller;
 
 import com.inoichi.db.model.Team;
 import com.inoichi.db.model.User;
+import com.inoichi.dto.LeaderboardResponse;
 import com.inoichi.dto.TeamSelectionRequest;
 import com.inoichi.dto.TreeRequestDTO;
 import com.inoichi.service.UserService;
@@ -43,6 +44,10 @@ public class UserController {
             return ResponseEntity.badRequest().body(response);
         }
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/top-xp")
+    public LeaderboardResponse getLeaderboard() {
+        return userService.getLeaderboard();
     }
 
 }

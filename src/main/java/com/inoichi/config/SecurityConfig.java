@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/webjars/**",
-                                "/houses/teams"
+                                "/houses/teams",
+                                "/users/top-xp"
                         ).permitAll()
                         .requestMatchers("/auth/login", "/auth/signup/**").permitAll()
                         .anyRequest().authenticated()

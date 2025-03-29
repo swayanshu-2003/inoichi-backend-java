@@ -9,9 +9,9 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class TeamXpInfo {
+public class TeamHouseXpInfo {
     private UUID teamId;
     private String teamName;
-    private int teamXp;
+    private String houseName;
+    private int xp;
 }
-
