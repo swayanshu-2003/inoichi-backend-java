@@ -1,6 +1,7 @@
 package com.inoichi.controller;
 
 import com.inoichi.dto.GenericResponse;
+import com.inoichi.dto.XpAwardResponse;
 import com.inoichi.service.GeminiApiService;
 import com.inoichi.service.AuthService;
 import com.inoichi.db.model.User;
@@ -26,7 +27,6 @@ public class GeminiController {
         return authService.getUserByEmail(email);
     }
 
-    // Endpoint for litter cleanup: requires two images (before & after)
     @PostMapping("/check-litter")
     public ResponseEntity<GenericResponse> checkCleanup(
             @RequestParam("beforeImage") MultipartFile beforeImage,
@@ -36,11 +36,19 @@ public class GeminiController {
             GenericResponse result = geminiApiService.checkLitterService(beforeImage, afterImage, user.getId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
+            // Get current user XP if possible
+            Integer currentXp = null;
+            try {
+                User user = getAuthenticatedUser();
+                currentXp = user.getXp();
+            } catch (Exception ex) {
+                // Ignore if we can't get current XP
+            }
+
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage(), currentXp));
         }
     }
 
-    // Endpoint for tree plantation: requires two images (before & after)
     @PostMapping("/check-tree")
     public ResponseEntity<GenericResponse> checkTreePlantation(
             @RequestParam("beforeImage") MultipartFile beforeImage,
@@ -50,11 +58,19 @@ public class GeminiController {
             GenericResponse result = geminiApiService.checkTreePlantation(beforeImage, afterImage, user.getId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
+            // Get current user XP if possible
+            Integer currentXp = null;
+            try {
+                User user = getAuthenticatedUser();
+                currentXp = user.getXp();
+            } catch (Exception ex) {
+                // Ignore if we can't get current XP
+            }
+
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage(), currentXp));
         }
     }
 
-    // Endpoint for ticket check: requires only one image
     @PostMapping("/check-ticket")
     public ResponseEntity<GenericResponse> checkTicket(
             @RequestParam("ticketImage") MultipartFile ticketImage) {
@@ -63,7 +79,16 @@ public class GeminiController {
             GenericResponse result = geminiApiService.checkTicket(ticketImage, user.getId());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage()));
+            // Get current user XP if possible
+            Integer currentXp = null;
+            try {
+                User user = getAuthenticatedUser();
+                currentXp = user.getXp();
+            } catch (Exception ex) {
+                // Ignore if we can't get current XP
+            }
+
+            return ResponseEntity.badRequest().body(new GenericResponse("error", "Error: " + e.getMessage(), currentXp));
         }
     }
 }

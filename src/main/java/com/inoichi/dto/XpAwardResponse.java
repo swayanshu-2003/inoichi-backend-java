@@ -47,4 +47,3 @@ public class XpAwardResponse {
         private int newXp;
     }
 }
-

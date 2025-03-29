@@ -52,6 +52,7 @@ public class GeminiApiService {
     // ------------------------------
 
     // 🔹 Check Litter Cleanup (requires two images)
+    // 🔹 Check Litter Cleanup (requires two images)
     @Transactional
     public GenericResponse checkLitterService(MultipartFile beforeImage, MultipartFile afterImage, UUID userId) throws Exception {
 
@@ -78,19 +79,71 @@ public class GeminiApiService {
             log.info("AI Response for litter check: {}", aiResponse);
 
             if (aiResponse.toLowerCase().contains("yes")) {
-                addXpToUser(userId, 10, "LITTER_CLEANUP"); // Award 10 XP
+                XpAwardResponse xpResponse = addXpToUser(userId, 10, "LITTER_CLEANUP"); // Award 10 XP
+
+                // Get the updated XP value from the response
+                Integer newUserXp = xpResponse.getUser() != null ? xpResponse.getUser().getNewXp() : null;
+
                 return GenericResponse.builder()
                         .status("success")
                         .message("Litter has been cleaned! You earned +10 XP!")
+                        .userXp(newUserXp) // Include the updated XP value
                         .build();
             } else {
+                // For failure cases, get the current XP
+                User user = userRepository.findById(userId).orElse(null);
+                Integer currentXp = user != null ? user.getXp() : null;
+
                 return GenericResponse.builder()
                         .status("failure")
                         .message("No significant changes detected. Try again!")
+                        .userXp(currentXp) // Include current XP even for failures
                         .build();
             }
         } catch (Exception e) {
             log.error("Error in litter cleanup check process: {}", e.getMessage(), e);
+            return GenericResponse.builder()
+                    .status("error")
+                    .message("Error: " + e.getMessage())
+                    .build();
+        }
+    }
+    @Transactional
+    public GenericResponse checkTicket(MultipartFile ticketImage, UUID userId) throws Exception {
+        log.info("Starting ticket verification check for user: {}", userId);
+
+        try {
+            String ticketUri = uploadFileToGoogle(ticketImage);
+
+            String prompt = "Analyze this ticket image and verify: 1. Is this a valid public transport ticket (Bus/Train/Metro)? 2. Does it have a valid date? 3. Is the user contributing to CO₂ reduction by using public transport?";
+
+            JsonNode response = generateContent(ticketUri, prompt);
+            String aiResponse = extractAiResponse(response);
+
+            if (aiResponse.toLowerCase().contains("yes")) {
+                XpAwardResponse xpResponse = addXpToUser(userId, 30, "TICKET_VERIFICATION"); // Award 30 XP
+
+                // Get the updated XP value from the response
+                Integer newUserXp = xpResponse.getUser() != null ? xpResponse.getUser().getNewXp() : null;
+
+                return GenericResponse.builder()
+                        .status("success")
+                        .message("Public transport used! You earned +30 XP!")
+                        .userXp(newUserXp) // Include the updated XP value
+                        .build();
+            } else {
+                // For failure cases, you may want to get the current XP
+                User user = userRepository.findById(userId).orElse(null);
+                Integer currentXp = user != null ? user.getXp() : null;
+
+                return GenericResponse.builder()
+                        .status("failure")
+                        .message("Invalid ticket. Try again!")
+                        .userXp(currentXp) // Include current XP even for failures
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("Error in ticket verification process: {}", e.getMessage(), e);
             return GenericResponse.builder()
                     .status("error")
                     .message("Error: " + e.getMessage())
@@ -114,54 +167,29 @@ public class GeminiApiService {
             String aiResponse = extractAiResponse(response);
 
             if (aiResponse.toLowerCase().contains("yes")) {
-                addXpToUser(userId, 20, "TREE_PLANTATION"); // Award 20 XP
+                XpAwardResponse xpResponse = addXpToUser(userId, 20, "TREE_PLANTATION"); // Award 20 XP
+
+                // Get the updated XP value from the response
+                Integer newUserXp = xpResponse.getUser() != null ? xpResponse.getUser().getNewXp() : null;
+
                 return GenericResponse.builder()
                         .status("success")
                         .message("Tree has been planted! You earned +20 XP!")
+                        .userXp(newUserXp) // Include the updated XP value
                         .build();
             } else {
+                // For failure cases, get the current XP
+                User user = userRepository.findById(userId).orElse(null);
+                Integer currentXp = user != null ? user.getXp() : null;
+
                 return GenericResponse.builder()
                         .status("failure")
                         .message("No significant changes detected. Try again!")
+                        .userXp(currentXp) // Include current XP even for failures
                         .build();
             }
         } catch (Exception e) {
             log.error("Error in tree plantation check process: {}", e.getMessage(), e);
-            return GenericResponse.builder()
-                    .status("error")
-                    .message("Error: " + e.getMessage())
-                    .build();
-        }
-    }
-
-
-    // 🔹 Check Ticket (requires only one image)
-    @Transactional
-    public GenericResponse checkTicket(MultipartFile ticketImage, UUID userId) throws Exception {
-        log.info("Starting ticket verification check for user: {}", userId);
-
-        try {
-            String ticketUri = uploadFileToGoogle(ticketImage);
-
-            String prompt = "Analyze this ticket image and verify: 1. Is this a valid public transport ticket (Bus/Train/Metro)? 2. Does it have a valid date? 3. Is the user contributing to CO₂ reduction by using public transport?";
-
-            JsonNode response = generateContent(ticketUri, prompt);
-            String aiResponse = extractAiResponse(response);
-
-            if (aiResponse.toLowerCase().contains("yes")) {
-                addXpToUser(userId, 30, "TICKET_VERIFICATION"); // Award 30 XP
-                return GenericResponse.builder()
-                        .status("success")
-                        .message("Public transport used! You earned +30 XP!")
-                        .build();
-            } else {
-                return GenericResponse.builder()
-                        .status("failure")
-                        .message("Invalid ticket. Try again!")
-                        .build();
-            }
-        } catch (Exception e) {
-            log.error("Error in ticket verification process: {}", e.getMessage(), e);
             return GenericResponse.builder()
                     .status("error")
                     .message("Error: " + e.getMessage())
