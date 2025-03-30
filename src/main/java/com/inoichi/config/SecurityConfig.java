@@ -72,7 +72,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "https://storesync.vercel.app/",
-                "http://localhost:3000", "https://buysync.vercel.app"));
+                "http://localhost:3000", "https://ecoxis-latest.onrender.com"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")); // Specify
         // allowed
         // methods
